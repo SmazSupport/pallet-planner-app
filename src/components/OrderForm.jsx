@@ -118,12 +118,19 @@ const OrderForm = () => {
       {palletResults.length > 0 && (
         <div className="bg-white border rounded p-4 mt-8 shadow">
           <h2 className="text-2xl font-bold mb-4">🧾 Pallet Summary</h2>
-
           <p className="mb-4 font-medium">
             Total Pallets: {palletResults.length} | Total Cartons:{" "}
             {totalCartons} | Total Weight: {totalWeight} lbs
           </p>
-
+          {/* ▼ NEW: per‑pallet lines */}
+          <ul className="mb-6 space-y-1 font-mono">
+            {palletResults.map((p) => (
+              <li key={p.palletNumber}>
+                Pallet {p.palletNumber} | Cartons: {p.boxCount} | Dims: {p.dims}{" "}
+                | Weight: {p.estimatedWeight} lbs
+              </li>
+            ))}
+          </ul>
           <ThreeDPalletView pallets={palletResults} />
         </div>
       )}

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 // ────────────────────────────────────────────────────────────────────────────────
-// CONSTANTS ─ tune these in one place
+// CONSTANTS — tune these in one place
 // ────────────────────────────────────────────────────────────────────────────────
 const BOX_HEIGHT = 14; // inches
 const PALLET_HEIGHT = 6; // pallet deck height (inches)
@@ -10,11 +10,19 @@ const BOX_WEIGHT = 14.5; // lbs @ 50 units / box  ➜ scaled below
 const DEFAULT_UNITS_PER_BOX = 50;
 
 // Coordinate order for a *snake* layer (mirrors your build pattern)
-// repeat this order in *every* layer so a1 sits on top of a1, etc.
 const COORDS = ["a1", "a2", "a3", "b3", "b2", "b1"];
 
+/**
+ * calculatePallets(poList, settings)
+ *
+ * @param {Array} poList   – [{ po, skus:[{ sku, quantity, unitsPerBox }] }]
+ * @param {Object} settings – { maxPalletHeight?: number, grouping?: "none"|"item"|"po-item" }
+ * @returns {Array}        – Pallet array with an attached `.totals` summary so
+ *                           legacy reduce() calls keep working _and_ you can
+ *                           read `result.totals` directly.
+ */
 export function calculatePallets(poList, settings) {
-  // 1) Capacity ‑ how many cartons fit on *one* pallet
+  // 1) Capacity — how many cartons fit on *one* pallet
   const maxPalletHeight = parseInt(settings.maxPalletHeight || 93, 10);
   const grouping = settings.grouping || "po-item"; // "none" | "item" | "po-item"
   const usableHeight = maxPalletHeight - PALLET_HEIGHT;
@@ -66,7 +74,7 @@ export function calculatePallets(poList, settings) {
   // 5) Allocate empty pallets
   const pallets = palletTargets.map(() => ({ cartons: [] }));
 
-  // 6) Group cartons by key (SKU or PO‑SKU) so we keep them *together*
+  // 6) Group cartons by key so we keep them *together*
   const groups = Object.values(
     cartons.reduce((acc, carton) => {
       const key = carton.groupKey;
@@ -79,7 +87,7 @@ export function calculatePallets(poList, settings) {
   groups.forEach((grp) => {
     let remaining = [...grp];
 
-    // 7A – try to fit whole group on any pallet that has room & stays <= target
+    // 7A – whole group if it fits
     let placed = false;
     pallets.forEach((p, i) => {
       if (!placed && p.cartons.length + remaining.length <= palletTargets[i]) {
@@ -89,7 +97,7 @@ export function calculatePallets(poList, settings) {
       }
     });
 
-    // 7B – if still cartons left, *split* the group across pallets round‑robin
+    // 7B – round‑robin split
     let palletIdx = 0;
     while (remaining.length) {
       const p = pallets[palletIdx % pallets.length];
@@ -101,9 +109,9 @@ export function calculatePallets(poList, settings) {
     }
   });
 
-  // 8) Build *layered* layouts with "touching" rule satisfied
-  return pallets.map((p, palletIndex) => {
-    // A) frequency map so we place the most numerous SKU first (makes nicer stacks)
+  // 8) Build *layered* layouts
+  const detailedPallets = pallets.map((p, palletIndex) => {
+    // A) frequency map — most common SKU first
     const freq = {};
     p.cartons.forEach(({ sku, po }) => {
       const label =
@@ -112,49 +120,69 @@ export function calculatePallets(poList, settings) {
     });
     const labelOrder = Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
 
-    // B) Create a *flat* array of labels in that order
+    // B) Flatten labels in that order
     const flat = [];
     labelOrder.forEach((label) => {
       for (let i = 0; i < freq[label]; i++) flat.push(label.split("-").pop());
     });
 
-    // C) Assign coordinates sequentially in a *cyclic* pattern so the kth carton
-    //    always sits directly on top of the (k‑6)th carton (same coordinate).
+    // C) Snake placement
     const layers = [];
     flat.forEach((skuLabel, idx) => {
       const layerIdx = Math.floor(idx / MAX_BOXES_PER_LAYER);
-      const coordIdx = idx % MAX_BOXES_PER_LAYER; // 0‑5 ➜ COORDS[coordIdx]
+      const coordIdx = idx % MAX_BOXES_PER_LAYER;
       if (!layers[layerIdx]) layers[layerIdx] = { breakdown: {}, mapping: [] };
 
-      // breakdown
       layers[layerIdx].breakdown[skuLabel] =
         (layers[layerIdx].breakdown[skuLabel] || 0) + 1;
 
-      // mapping (add in snake order)
       layers[layerIdx].mapping.push({
         coordinate: COORDS[coordIdx],
         sku: skuLabel,
       });
     });
 
-    // D) Derive weight & height estimates
+    // D) Metrics
     const estWeight =
       35 +
       p.cartons.reduce(
         (sum, c) => sum + (c.unitsPerBox / DEFAULT_UNITS_PER_BOX) * BOX_WEIGHT,
         0
       );
-    const estHeight = PALLET_HEIGHT + layers.length * BOX_HEIGHT;
+    const estHeight = PALLET_HEIGHT + layers.length * BOX_HEIGHT; // inches
+    const dims = `40x48x${estHeight}`; // WxLxH
 
-    // E) Return tidy pallet object
     return {
       palletNumber: palletIndex + 1,
       boxCount: p.cartons.length,
       layers: layers.length,
-      estimatedHeight: estHeight,
+      dims, // "40x48x48" etc.
+      estimatedHeight: estHeight, // ← ADDED back for UI
       estimatedWeight: Math.round(estWeight),
       layerBreakdown: layers.map((l) => l.breakdown),
-      layerLayout: layers.map((l) => l.mapping), // 2×3 coordinate map per layer
+      layerLayout: layers.map((l) => l.mapping),
     };
   });
+
+  // 9) Attach overall summary & return **array** for backward‑compatibility
+  const totals = {
+    pallets: detailedPallets.length,
+    cartons: detailedPallets.reduce((s, p) => s + p.boxCount, 0),
+    weight: detailedPallets.reduce((s, p) => s + p.estimatedWeight, 0),
+  };
+
+  const resultArray = [...detailedPallets]; // shallow copy keeps array semantics
+  resultArray.totals = totals; // magic property → easy access
+  // expose pallets as a named field too so old `.pallets` code works
+  resultArray.pallets = resultArray;
+
+  // convenient per‑pallet summary objects for quick display
+  resultArray.summaries = resultArray.map((p) => ({
+    pallet: p.palletNumber,
+    cartons: p.boxCount,
+    dims: p.dims,
+    weight: p.estimatedWeight,
+  }));
+
+  return resultArray;
 }
