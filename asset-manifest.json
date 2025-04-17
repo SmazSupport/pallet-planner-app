@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/pallet-planner-app/static/css/main.6b2cbe10.css",
+    "main.js": "/pallet-planner-app/static/js/main.5ba7d49a.js",
+    "static/js/453.c26137df.chunk.js": "/pallet-planner-app/static/js/453.c26137df.chunk.js",
+    "index.html": "/pallet-planner-app/index.html",
+    "main.6b2cbe10.css.map": "/pallet-planner-app/static/css/main.6b2cbe10.css.map",
+    "main.5ba7d49a.js.map": "/pallet-planner-app/static/js/main.5ba7d49a.js.map",
+    "453.c26137df.chunk.js.map": "/pallet-planner-app/static/js/453.c26137df.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.6b2cbe10.css",
+    "static/js/main.5ba7d49a.js"
+  ]
+}
