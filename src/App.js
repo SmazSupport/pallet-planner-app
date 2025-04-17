@@ -1,7 +1,10 @@
+import React from "react";
+import OrderForm from "./components/OrderForm";
+
 function App() {
   return (
-    <div className="p-6 text-3xl font-bold text-blue-600">
-      🚀 Tailwind is working!
+    <div className="bg-gray-100 min-h-screen">
+      <OrderForm />
     </div>
   );
 }

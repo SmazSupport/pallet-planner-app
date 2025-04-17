@@ -1,0 +1,43 @@
+.pallet-view-container {
+  margin-top: 2rem;
+}
+
+.pallet-select {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.pallet-content {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pallet-sidebar {
+  flex: 1;
+  min-width: 250px;
+  max-width: 300px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.layer-list {
+  margin-top: 0.5rem;
+}
+
+.pallet-canvas {
+  flex: 2;
+  min-width: 400px;
+  height: 600px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
